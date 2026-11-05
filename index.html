@@ -148,6 +148,7 @@
       ['homeScreen', 'logScreen', 'configScreen'].forEach(id => {
         document.getElementById(id).classList.toggle('hidden', id !== screenId);
       });
+      window.location.hash = screenId.replace('Screen', '');
       renderUI();
     }
 
@@ -380,7 +381,7 @@
 
     function handleAuthClick() {
       if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
-        alert('Google Sign-In script is still loading or blocked. Please wait a few seconds and try again, or check your internet connection.');
+        alert('Google Sign-In script is still loading. Please wait a moment and try again.');
         return;
       }
 
@@ -523,11 +524,21 @@
     }
 
     // Initialize UI and load sheet structure if previously logged in
-    renderUI();
-    updateAuthButtonState();
-    if (isTokenValid() && spreadsheetId) {
-      loadStructureFromSheets();
-    }
+    window.addEventListener('load', () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'log') {
+        openLogScreen();
+      } else if (hash === 'config') {
+        openConfigScreen();
+      } else {
+        showScreen('homeScreen');
+      }
+      renderUI();
+      updateAuthButtonState();
+      if (isTokenValid() && spreadsheetId) {
+        loadStructureFromSheets();
+      }
+    });
   </script>
 </body>
 </html>
