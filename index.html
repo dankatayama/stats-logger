@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Stats Logger PWA</title>
+
+  <!-- PWA & iOS Home Screen Meta Tags -->
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#2563eb" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="StatsLog" />
+  <link rel="apple-touch-icon" href="/icon-192.png" />
+
+  <!-- Tailwind CSS for mobile-first UI -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Identity Services -->
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen font-sans">
+
+  <div class="max-w-md mx-auto p-4 space-y-6">
+    <!-- Top Bar / Auth Status -->
+    <header class="flex items-center justify-between border-b pb-3">
+      <h1 class="text-xl font-bold text-blue-600">Stats Logger</h1>
+      <button id="authBtn" onclick="handleAuthClick()" class="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg font-medium shadow-sm">
+        Sign in with Google
+      </button>
+    </header>
+
+    <!-- SCREEN 1: MAIN / HOME -->
+    <section id="homeScreen" class="space-y-4">
+      <div>
+        <label for="groupingSelect" class="block text-sm font-medium text-slate-700 mb-1">
+          Select Statistics Grouping
+        </label>
+        <select id="groupingSelect" onchange="onGroupingChange()" class="w-full rounded-lg border border-slate-300 bg-white p-3 text-base shadow-sm focus:border-blue-500 focus:outline-none">
+        </select>
+        <p id="groupingDescPreview" class="text-xs text-slate-500 mt-1"></p>
+      </div>
+
+      <div class="grid grid-cols-1 gap-3 pt-2">
+        <button onclick="openLogScreen()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 px-4 rounded-xl shadow">
+          Log Entry
+        </button>
+        <button onclick="openConfigScreen()" class="w-full bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold py-3 px-4 rounded-xl shadow-sm">
+          Configuration
+        </button>
+      </div>
+    </section>
+
+    <!-- SCREEN 2: LOG SCREEN -->
+    <section id="logScreen" class="hidden space-y-4">
+      <div class="flex items-center justify-between">
+        <div>
+          <h2 id="logGroupingTitle" class="text-lg font-bold"></h2>
+          <p id="logGroupingDesc" class="text-xs text-slate-500"></p>
+        </div>
+        <button onclick="showScreen('homeScreen')" class="text-sm text-slate-500 hover:text-slate-800">Cancel</button>
+      </div>
+
+      <form id="logForm" onsubmit="submitLog(event)" class="space-y-4">
+        <div id="metricsInputsContainer" class="space-y-3"></div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+          <textarea id="logNotes" rows="3" placeholder="Optional session notes..." class="w-full rounded-lg border border-slate-300 p-2.5 text-sm focus:border-blue-500 focus:outline-none"></textarea>
+        </div>
+
+        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 text-white font-semibold py-3 px-4 rounded-xl shadow">
+          Save to Google Sheets
+        </button>
+      </form>
+    </section>
+
+    <!-- SCREEN 3: CONFIGURATION SCREEN -->
+    <section id="configScreen" class="hidden space-y-6">
+      <div class="flex items-center justify-between border-b pb-2">
+        <h2 class="text-lg font-bold">Configuration</h2>
+        <button onclick="showScreen('homeScreen')" class="text-sm text-blue-600 font-medium">Done</button>
+      </div>
+
+      <!-- Manage Groupings -->
+      <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3 shadow-sm">
+        <h3 class="font-semibold text-sm uppercase tracking-wider text-slate-500">1. Manage Groupings</h3>
+        <div id="configGroupingsList" class="space-y-2"></div>
+
+        <div class="border-t pt-3 space-y-2">
+          <input id="newGroupingTitle" type="text" placeholder="Grouping Title (e.g., Fitness)" class="w-full border rounded-lg p-2 text-sm" />
+          <input id="newGroupingDesc" type="text" placeholder="Description" class="w-full border rounded-lg p-2 text-sm" />
+          <button onclick="saveGrouping()" id="saveGroupingBtn" class="w-full bg-slate-800 text-white py-2 rounded-lg text-sm font-medium">
+            Add Grouping
+          </button>
+        </div>
+      </div>
+
+      <!-- Manage Metrics for Selected Grouping -->
+      <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3 shadow-sm">
+        <div class="flex items-center justify-between">
+          <h3 class="font-semibold text-sm uppercase tracking-wider text-slate-500">2. Manage Metrics</h3>
+          <span id="configActiveGroupingBadge" class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium"></span>
+        </div>
+
+        <div id="configMetricsList" class="space-y-2"></div>
+
+        <div class="border-t pt-3 space-y-2">
+          <input id="newMetricTitle" type="text" placeholder="Metric Title (e.g., Weight)" class="w-full border rounded-lg p-2 text-sm" />
+          <input id="newMetricDesc" type="text" placeholder="Metric Description (e.g., Morning scale)" class="w-full border rounded-lg p-2 text-sm" />
+          <input id="newMetricUnit" type="text" placeholder="Unit (e.g., kg, %, bpm)" class="w-full border rounded-lg p-2 text-sm" />
+          <button onclick="saveMetric()" id="saveMetricBtn" class="w-full bg-slate-800 text-white py-2 rounded-lg text-sm font-medium">
+            Add Metric
+          </button>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // --- STATE & GOOGLE API CONFIG ---
+    const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID.apps.googleusercontent.com';
+    const SCOPES = 'https://www.googleapis.com/auth/drive.file';
+    let accessToken = null;
+    let spreadsheetId = null;
+    let editingGroupingIndex = null;
+    let editingMetricIndex = null;
+
+    // Local state (synced with Google Sheets when authenticated)
+    let appData = {
+      groupings: [
+        {
+          sheetId: 0,
+          title: 'Daily Vitals',
+          description: 'Morning health and body metrics',
+          metrics: [
+            { title: 'Weight', description: 'Post-wake weigh in', unit: 'kg' },
+            { title: 'Resting HR', description: 'Seated pulse', unit: 'bpm' }
+          ]
+        }
+      ]
+    };
+
+    // --- SCREEN NAVIGATION ---
+    function showScreen(screenId) {
+      ['homeScreen', 'logScreen', 'configScreen'].forEach(id => {
+        document.getElementById(id).classList.toggle('hidden', id !== screenId);
+      });
+      renderUI();
+    }
+
+    function renderUI() {
+      const select = document.getElementById('groupingSelect');
+      const currentIdx = select.selectedIndex >= 0 ? select.selectedIndex : 0;
+      select.innerHTML = appData.groupings.map((g, idx) =>
+        `<option value="${idx}" ${idx === currentIdx ? 'selected' : ''}>${g.title}</option>`
+      ).join('');
+
+      const activeGroup = appData.groupings[select.value] || appData.groupings[0];
+      document.getElementById('groupingDescPreview').textContent = activeGroup ? activeGroup.description : '';
+    }
+
+    function onGroupingChange() {
+      renderUI();
+    }
+
+    // --- LOG SCREEN ---
+    function openLogScreen() {
+      const idx = document.getElementById('groupingSelect').value;
+      const group = appData.groupings[idx];
+      if (!group) return alert('Please create a grouping first.');
+
+      document.getElementById('logGroupingTitle').textContent = group.title;
+      document.getElementById('logGroupingDesc').textContent = group.description;
+      document.getElementById('logNotes').value = '';
+
+      const container = document.getElementById('metricsInputsContainer');
+      container.innerHTML = group.metrics.map((m, i) => `
+        <div class="bg-white p-3 rounded-lg border border-slate-200">
+          <div class="flex justify-between items-baseline mb-1">
+            <label class="text-sm font-semibold text-slate-800">${m.title}</label>
+            <span class="text-xs font-medium text-blue-600">${m.unit}</span>
+          </div>
+          <p class="text-xs text-slate-500 mb-2">${m.description}</p>
+          <input type="text" data-metric-idx="${i}" required placeholder="Enter ${m.title.toLowerCase()}..."
+            class="metric-input w-full rounded border border-slate-300 p-2 text-sm focus:border-blue-500 focus:outline-none" />
+        </div>
+      `).join('');
+
+      showScreen('logScreen');
+    }
+
+    async function submitLog(e) {
+      e.preventDefault();
+      const idx = document.getElementById('groupingSelect').value;
+      const group = appData.groupings[idx];
+      const timestamp = new Date().toISOString();
+      const metricValues = Array.from(document.querySelectorAll('.metric-input')).map(input => input.value);
+      const notes = document.getElementById('logNotes').value;
+
+      // Row payload: [Timestamp, ...Metrics, Notes]
+      const rowData = [timestamp, ...metricValues, notes];
+
+      if (accessToken && spreadsheetId) {
+        await appendRowToSheet(group.title, rowData);
+      } else {
+        console.log('Offline/Demo Mode - Row logged:', { sheet: group.title, rowData });
+        alert('Logged locally (Connect Google account to sync to Sheets):\n' + JSON.stringify(rowData));
+      }
+      showScreen('homeScreen');
+    }
+
+    // --- CONFIGURATION SCREEN (CRUD FOR GROUPINGS & METRICS) ---
+    function openConfigScreen() {
+      showScreen('configScreen');
+      renderConfigLists();
+    }
+
+    function renderConfigLists() {
+      const select = document.getElementById('groupingSelect');
+      const activeIdx = Number(select.value || 0);
+      const activeGroup = appData.groupings[activeIdx];
+
+      // Render Groupings
+      document.getElementById('configGroupingsList').innerHTML = appData.groupings.map((g, i) => `
+        <div class="flex items-center justify-between bg-slate-50 p-2 rounded border text-sm">
+          <div>
+            <p class="font-medium">${g.title}</p>
+            <p class="text-xs text-slate-500">${g.description}</p>
+          </div>
+          <div class="space-x-2">
+            <button onclick="editGrouping(${i})" class="text-xs text-blue-600 font-medium">Edit</button>
+            <button onclick="deleteGrouping(${i})" class="text-xs text-red-600 font-medium">Delete</button>
+          </div>
+        </div>
+      `).join('');
+
+      // Render Metrics for Active Grouping
+      document.getElementById('configActiveGroupingBadge').textContent = activeGroup ? activeGroup.title : 'None';
+      document.getElementById('configMetricsList').innerHTML = activeGroup ? activeGroup.metrics.map((m, i) => `
+        <div class="flex items-center justify-between bg-slate-50 p-2 rounded border text-sm">
+          <div>
+            <p class="font-medium">${m.title} <span class="text-xs text-blue-600">(${m.unit})</span></p>
+            <p class="text-xs text-slate-500">${m.description}</p>
+          </div>
+          <div class="space-x-2">
+            <button onclick="editMetric(${i})" class="text-xs text-blue-600 font-medium">Edit</button>
+            <button onclick="deleteMetric(${i})" class="text-xs text-red-600 font-medium">Delete</button>
+          </div>
+        </div>
+      `).join('') : '<p class="text-xs text-slate-400">Select or create a grouping first.</p>';
+    }
+
+    async function saveGrouping() {
+      const title = document.getElementById('newGroupingTitle').value.trim();
+      const description = document.getElementById('newGroupingDesc').value.trim();
+      if (!title) return;
+
+      if (editingGroupingIndex !== null) {
+        appData.groupings[editingGroupingIndex].title = title;
+        appData.groupings[editingGroupingIndex].description = description;
+        editingGroupingIndex = null;
+        document.getElementById('saveGroupingBtn').textContent = 'Add Grouping';
+      } else {
+        appData.groupings.push({ title, description, metrics: [] });
+      }
+
+      document.getElementById('newGroupingTitle').value = '';
+      document.getElementById('newGroupingDesc').value = '';
+      renderUI();
+      renderConfigLists();
+      if (accessToken && spreadsheetId) await syncStructureToSheets();
+    }
+
+    function editGrouping(idx) {
+      const g = appData.groupings[idx];
+      document.getElementById('newGroupingTitle').value = g.title;
+      document.getElementById('newGroupingDesc').value = g.description;
+      editingGroupingIndex = idx;
+      document.getElementById('saveGroupingBtn').textContent = 'Update Grouping';
+    }
+
+    function deleteGrouping(idx) {
+      appData.groupings.splice(idx, 1);
+      renderUI();
+      renderConfigLists();
+    }
+
+    async function saveMetric() {
+      const activeIdx = Number(document.getElementById('groupingSelect').value || 0);
+      const group = appData.groupings[activeIdx];
+      if (!group) return;
+
+      const title = document.getElementById('newMetricTitle').value.trim();
+      const description = document.getElementById('newMetricDesc').value.trim();
+      const unit = document.getElementById('newMetricUnit').value.trim();
+      if (!title) return;
+
+      if (editingMetricIndex !== null) {
+        group.metrics[editingMetricIndex] = { title, description, unit };
+        editingMetricIndex = null;
+        document.getElementById('saveMetricBtn').textContent = 'Add Metric';
+      } else {
+        group.metrics.push({ title, description, unit });
+      }
+
+      document.getElementById('newMetricTitle').value = '';
+      document.getElementById('newMetricDesc').value = '';
+      document.getElementById('newMetricUnit').value = '';
+      renderConfigLists();
+      if (accessToken && spreadsheetId) await syncStructureToSheets();
+    }
+
+    function editMetric(idx) {
+      const activeIdx = Number(document.getElementById('groupingSelect').value || 0);
+      const m = appData.groupings[activeIdx].metrics[idx];
+      document.getElementById('newMetricTitle').value = m.title;
+      document.getElementById('newMetricDesc').value = m.description;
+      document.getElementById('newMetricUnit').value = m.unit;
+      editingMetricIndex = idx;
+      document.getElementById('saveMetricBtn').textContent = 'Update Metric';
+    }
+
+    function deleteMetric(idx) {
+      const activeIdx = Number(document.getElementById('groupingSelect').value || 0);
+      appData.groupings[activeIdx].metrics.splice(idx, 1);
+      renderConfigLists();
+    }
+
+    // --- GOOGLE AUTH & SHEETS SYNC HELPERS ---
+    function handleAuthClick() {
+      const client = google.accounts.oauth2.initTokenClient({
+        client_id: CLIENT_ID,
+        scope: SCOPES,
+        callback: async (response) => {
+          if (response.access_token) {
+            accessToken = response.access_token;
+            document.getElementById('authBtn').textContent = 'Connected';
+            document.getElementById('authBtn').classList.replace('bg-blue-600', 'bg-green-600');
+            await ensureMasterSpreadsheet();
+          }
+        }
+      });
+      client.requestAccessToken();
+    }
+
+    async function ensureMasterSpreadsheet() {
+      // Search Drive for existing file
+      const q = encodeURIComponent("name='Statistics_Tracker_Data' and mimeType='application/vnd.google-apps.spreadsheet' and trashed=false");
+      const res = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}`, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+      const data = await res.json();
+
+      if (data.files && data.files.length > 0) {
+        spreadsheetId = data.files[0].id;
+      } else {
+        // Create new spreadsheet
+        const createRes = await fetch('https://sheets.googleapis.com/v4/spreadsheets', {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ properties: { title: 'Statistics_Tracker_Data' } })
+        });
+        const created = await createRes.json();
+        spreadsheetId = created.spreadsheetId;
+        await syncStructureToSheets();
+      }
+    }
+
+    // Writes the 5 header rows for each Grouping sheet
+    async function syncStructureToSheets() {
+      for (const group of appData.groupings) {
+        const row1 = [group.title];
+        const row2 = [group.description];
+        const row3 = ['Timestamp', ...group.metrics.map(m => m.title), 'Notes'];
+        const row4 = ['ISO Date/Time', ...group.metrics.map(m => m.description), 'Session Notes'];
+        const row5 = ['ISO-8601', ...group.metrics.map(m => m.unit), 'Text'];
+
+        await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(group.title)}!A1:Z5?valueInputOption=USER_ENTERED`, {
+          method: 'PUT',
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ values: [row1, row2, row3, row4, row5] })
+        });
+      }
+    }
+
+    async function appendRowToSheet(sheetTitle, rowValues) {
+      await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(sheetTitle)}!A6:append?valueInputOption=USER_ENTERED`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ values: [rowValues] })
+      });
+    }
+
+    // Initialize UI on load
+    renderUI();
+  </script>
+</body>
+</html>
