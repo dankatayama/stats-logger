@@ -379,6 +379,11 @@
     }
 
     function handleAuthClick() {
+      if (typeof google === 'undefined' || !google.accounts || !google.accounts.oauth2) {
+        alert('Google Sign-In script is still loading or blocked. Please wait a few seconds and try again, or check your internet connection.');
+        return;
+      }
+
       const client = google.accounts.oauth2.initTokenClient({
         client_id: CLIENT_ID,
         scope: SCOPES,
