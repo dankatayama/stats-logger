@@ -54,9 +54,8 @@
           <h2 id="chartDashboardTitle" class="text-lg font-bold text-indigo-700">Dashboard</h2>
           <p id="chartDashboardDesc" class="text-xs text-slate-500">Last 10 entries with ideal ranges</p>
         </div>
-        <div class="flex items-center space-x-2">
-          <button onclick="openLogScreen()" class="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg font-medium shadow-sm">Log Entry</button>
-          <button onclick="openConfigScreen()" class="text-sm bg-slate-200 hover:bg-slate-300 px-3 py-1 rounded-lg font-medium">Back</button>
+        <div>
+          <button onclick="openLogScreen()" class="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-1.5 rounded-lg font-medium shadow-sm">Log Entry</button>
         </div>
       </div>
       <div id="chartsContainer" class="space-y-4 pb-4"></div>
@@ -180,7 +179,6 @@
         document.getElementById('headerDashboardTitle').textContent = activeGroup.title;
       }
 
-      // Render dropdown items for header switching
       const dropdownItems = document.getElementById('headerDropdownItems');
       dropdownItems.innerHTML = appData.dashboards.map((g, idx) => `
         <div onclick="switchDashboard(${idx})" class="px-4 py-2 text-sm cursor-pointer hover:bg-slate-50 ${idx === currentDashboardIndex ? 'font-bold text-blue-600 bg-blue-50/50' : 'text-slate-700'}">
@@ -194,7 +192,6 @@
       dropdown.classList.toggle('hidden');
     }
 
-    // Close dropdown when clicking outside
     window.addEventListener('click', (e) => {
       const header = document.querySelector('header');
       if (!header.contains(e.target)) {
