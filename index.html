@@ -298,7 +298,7 @@
 
     async function fetchDashboardRows(group) {
       try {
-        const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(group.title)}!A6:Z1000`, {
+        const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(group.title)}!A8:Z1000`, {
           headers: { Authorization: `Bearer ${accessToken}` }
         });
         const data = await res.json();
