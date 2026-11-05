@@ -23,11 +23,17 @@
 <body class="bg-slate-50 text-slate-900 min-h-screen font-sans">
 
   <div class="max-w-md mx-auto p-4 space-y-6">
-    <!-- Top Bar / Auth & Gear Status -->
+    <!-- Top Bar / Active Dashboard Title with Selector & Gear -->
     <header class="flex items-center justify-between border-b pb-3">
-      <div class="flex items-center space-x-3">
-        <h1 class="text-xl font-bold text-blue-600">Stats Logger</h1>
+      <div class="relative flex items-center space-x-1 cursor-pointer group" onclick="toggleHeaderDropdown()">
+        <h1 id="headerDashboardTitle" class="text-lg font-bold text-slate-900">Loading...</h1>
+        <span class="text-xs text-slate-500 font-bold">▼</span>
+        <!-- Dropdown for switching dashboards -->
+        <div id="headerDropdown" class="hidden absolute top-full left-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-lg py-1 z-50">
+          <div id="headerDropdownItems" class="divide-y divide-slate-100"></div>
+        </div>
       </div>
+
       <div class="flex items-center space-x-2">
         <button id="authBtn" onclick="handleAuthClick()" class="text-xs bg-blue-600 text-white px-2.5 py-1.5 rounded-lg font-medium shadow-sm">
           Sign in
@@ -38,25 +44,22 @@
       </div>
     </header>
 
-    <!-- SCREEN 1: MAIN / HOME -->
-    <section id="homeScreen" class="space-y-4">
-      <div>
-        <label for="dashboardSelect" class="block text-sm font-medium text-slate-700 mb-1">
-          Select Dashboard
-        </label>
-        <select id="dashboardSelect" onchange="onDashboardChange()" class="w-full rounded-lg border border-slate-300 bg-white p-3 text-base shadow-sm focus:border-blue-500 focus:outline-none">
-        </select>
-        <p id="dashboardDescPreview" class="text-xs text-slate-500 mt-1"></p>
-      </div>
+    <!-- HIDDEN SELECTOR (Kept for state binding) -->
+    <select id="dashboardSelect" onchange="onDashboardChange()" class="hidden"></select>
 
-      <div class="grid grid-cols-1 gap-3 pt-2">
-        <button onclick="openLogScreen()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 px-4 rounded-xl shadow">
-          Log Entry
-        </button>
-        <button onclick="openDashboardView()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow">
-          Open Dashboard (Charts)
-        </button>
+    <!-- SCREEN 1: DASHBOARD CHARTS VIEW (LANDING PAGE) -->
+    <section id="dashboardViewScreen" class="space-y-4">
+      <div class="flex items-center justify-between border-b pb-2">
+        <div>
+          <h2 id="chartDashboardTitle" class="text-lg font-bold text-indigo-700">Dashboard</h2>
+          <p id="chartDashboardDesc" class="text-xs text-slate-500">Last 10 entries with ideal ranges</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="openLogScreen()" class="text-sm bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded-lg font-medium shadow-sm">Log Entry</button>
+          <button onclick="openConfigScreen()" class="text-sm bg-slate-200 hover:bg-slate-300 px-3 py-1 rounded-lg font-medium">Back</button>
+        </div>
       </div>
+      <div id="chartsContainer" class="space-y-4 pb-4"></div>
     </section>
 
     <!-- SCREEN 2: LOG SCREEN -->
@@ -68,7 +71,6 @@
         </div>
         <div class="space-x-2">
           <button onclick="openDashboardView()" class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-1.5 rounded font-medium">Dashboard</button>
-          <button onclick="showScreen('homeScreen')" class="text-xs text-slate-500 hover:text-slate-800">Cancel</button>
         </div>
       </div>
 
@@ -86,23 +88,11 @@
       </form>
     </section>
 
-    <!-- SCREEN 3: DASHBOARD CHARTS VIEW -->
-    <section id="dashboardViewScreen" class="hidden space-y-4">
-      <div class="flex items-center justify-between border-b pb-2">
-        <div>
-          <h2 id="chartDashboardTitle" class="text-lg font-bold text-indigo-700"></h2>
-          <p class="text-xs text-slate-500">Last 10 entries with ideal ranges</p>
-        </div>
-        <button onclick="showScreen('homeScreen')" class="text-sm bg-slate-200 hover:bg-slate-300 px-3 py-1 rounded-lg font-medium">Back</button>
-      </div>
-      <div id="chartsContainer" class="space-y-4 pb-4"></div>
-    </section>
-
-    <!-- SCREEN 4: CONFIGURATION SCREEN -->
+    <!-- SCREEN 3: CONFIGURATION SCREEN -->
     <section id="configScreen" class="hidden space-y-6">
       <div class="flex items-center justify-between border-b pb-2">
         <h2 class="text-lg font-bold">Configuration</h2>
-        <button onclick="showScreen('homeScreen')" class="text-sm text-blue-600 font-medium">Done</button>
+        <button onclick="openDashboardView()" class="text-sm text-blue-600 font-medium">Back</button>
       </div>
 
       <!-- Manage Dashboards -->
@@ -154,6 +144,7 @@
     let editingDashboardIndex = null;
     let editingMetricIndex = null;
     let activeCharts = [];
+    let currentDashboardIndex = 0;
 
     let appData = {
       dashboards: [
@@ -171,7 +162,7 @@
     };
 
     function showScreen(screenId) {
-      ['homeScreen', 'logScreen', 'dashboardViewScreen', 'configScreen'].forEach(id => {
+      ['dashboardViewScreen', 'logScreen', 'configScreen'].forEach(id => {
         document.getElementById(id).classList.toggle('hidden', id !== screenId);
       });
       window.location.hash = screenId.replace('Screen', '');
@@ -180,22 +171,52 @@
 
     function renderUI() {
       const select = document.getElementById('dashboardSelect');
-      const currentIdx = select.selectedIndex >= 0 ? select.selectedIndex : 0;
       select.innerHTML = appData.dashboards.map((g, idx) =>
-        `<option value="${idx}" ${idx === currentIdx ? 'selected' : ''}>${g.title}</option>`
+        `<option value="${idx}" ${idx === currentDashboardIndex ? 'selected' : ''}>${g.title}</option>`
       ).join('');
 
-      const activeGroup = appData.dashboards[select.value] || appData.dashboards[0];
-      document.getElementById('dashboardDescPreview').textContent = activeGroup ? activeGroup.description : '';
+      const activeGroup = appData.dashboards[currentDashboardIndex] || appData.dashboards[0];
+      if (activeGroup) {
+        document.getElementById('headerDashboardTitle').textContent = activeGroup.title;
+      }
+
+      // Render dropdown items for header switching
+      const dropdownItems = document.getElementById('headerDropdownItems');
+      dropdownItems.innerHTML = appData.dashboards.map((g, idx) => `
+        <div onclick="switchDashboard(${idx})" class="px-4 py-2 text-sm cursor-pointer hover:bg-slate-50 ${idx === currentDashboardIndex ? 'font-bold text-blue-600 bg-blue-50/50' : 'text-slate-700'}">
+          ${g.title}
+        </div>
+      `).join('');
+    }
+
+    function toggleHeaderDropdown() {
+      const dropdown = document.getElementById('headerDropdown');
+      dropdown.classList.toggle('hidden');
+    }
+
+    // Close dropdown when clicking outside
+    window.addEventListener('click', (e) => {
+      const header = document.querySelector('header');
+      if (!header.contains(e.target)) {
+        document.getElementById('headerDropdown').classList.add('hidden');
+      }
+    });
+
+    function switchDashboard(idx) {
+      currentDashboardIndex = idx;
+      document.getElementById('dashboardSelect').value = idx;
+      document.getElementById('headerDropdown').classList.add('hidden');
+      renderUI();
+      openDashboardView();
     }
 
     function onDashboardChange() {
+      currentDashboardIndex = Number(document.getElementById('dashboardSelect').value);
       renderUI();
     }
 
     async function openLogScreen() {
-      const idx = document.getElementById('dashboardSelect').value;
-      const group = appData.dashboards[idx];
+      const group = appData.dashboards[currentDashboardIndex];
       if (!group) return alert('Please create a dashboard first.');
 
       document.getElementById('logDashboardTitle').textContent = group.title;
@@ -262,8 +283,7 @@
 
     async function submitLog(e) {
       e.preventDefault();
-      const idx = document.getElementById('dashboardSelect').value;
-      const group = appData.dashboards[idx];
+      const group = appData.dashboards[currentDashboardIndex];
       const timestamp = new Date().toISOString();
       const metricValues = Array.from(document.querySelectorAll('.metric-input')).map(input => input.value);
       const notes = document.getElementById('logNotes').value;
@@ -277,16 +297,16 @@
         alert('Session expired. Please sign in again.');
         handleAuthClick();
       }
-      showScreen('homeScreen');
+      openDashboardView();
     }
 
     // --- DASHBOARD CHARTS VIEW ---
     async function openDashboardView() {
-      const idx = document.getElementById('dashboardSelect').value;
-      const group = appData.dashboards[idx];
+      const group = appData.dashboards[currentDashboardIndex];
       if (!group) return alert('Please select a dashboard first.');
 
       document.getElementById('chartDashboardTitle').textContent = group.title;
+      document.getElementById('chartDashboardDesc').textContent = group.description || 'Last 10 entries with ideal ranges';
       
       if (isTokenValid() && spreadsheetId) {
         await fetchDashboardRows(group);
@@ -414,9 +434,7 @@
     }
 
     function renderConfigLists() {
-      const select = document.getElementById('dashboardSelect');
-      const activeIdx = Number(select.value || 0);
-      const activeGroup = appData.dashboards[activeIdx];
+      const activeGroup = appData.dashboards[currentDashboardIndex];
 
       document.getElementById('configDashboardsList').innerHTML = appData.dashboards.map((g, i) => `
         <div class="flex items-center justify-between bg-slate-50 p-2 rounded border text-sm">
@@ -480,13 +498,15 @@
 
     function deleteDashboard(idx) {
       appData.dashboards.splice(idx, 1);
+      if (currentDashboardIndex >= appData.dashboards.length) {
+        currentDashboardIndex = Math.max(0, appData.dashboards.length - 1);
+      }
       renderUI();
       renderConfigLists();
     }
 
     async function saveMetric() {
-      const activeIdx = Number(document.getElementById('dashboardSelect').value || 0);
-      const group = appData.dashboards[activeIdx];
+      const group = appData.dashboards[currentDashboardIndex];
       if (!group) return;
 
       const title = document.getElementById('newMetricTitle').value.trim();
@@ -514,8 +534,8 @@
     }
 
     function editMetric(idx) {
-      const activeIdx = Number(document.getElementById('dashboardSelect').value || 0);
-      const m = appData.dashboards[activeIdx].metrics[idx];
+      const group = appData.dashboards[currentDashboardIndex];
+      const m = group.metrics[idx];
       document.getElementById('newMetricTitle').value = m.title;
       document.getElementById('newMetricDesc').value = m.description;
       document.getElementById('newMetricUnit').value = m.unit;
@@ -526,8 +546,8 @@
     }
 
     function deleteMetric(idx) {
-      const activeIdx = Number(document.getElementById('dashboardSelect').value || 0);
-      appData.dashboards[activeIdx].metrics.splice(idx, 1);
+      const group = appData.dashboards[currentDashboardIndex];
+      group.metrics.splice(idx, 1);
       renderConfigLists();
     }
 
@@ -632,6 +652,7 @@
         return { sheetId: s.properties.sheetId, title, description, metrics, rows: [] };
       });
       renderUI();
+      openDashboardView();
     }
 
     async function syncStructureToSheets() {
@@ -691,22 +712,14 @@
       });
     }
 
-    // Initialize UI and hash router on load
-    window.addEventListener('load', () => {
-      const hash = window.location.hash.replace('#', '');
-      if (hash === 'log') {
-        openLogScreen();
-      } else if (hash === 'dashboardView') {
-        openDashboardView();
-      } else if (hash === 'config') {
-        openConfigScreen();
-      } else {
-        showScreen('homeScreen');
-      }
+    // Initialize UI and automatically open Dashboard as landing page on load
+    window.addEventListener('load', async () => {
       renderUI();
       updateAuthButtonState();
       if (isTokenValid() && spreadsheetId) {
-        loadStructureFromSheets();
+        await loadStructureFromSheets();
+      } else {
+        openDashboardView();
       }
     });
   </script>
