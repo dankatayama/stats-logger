@@ -202,13 +202,11 @@
       document.getElementById('logDashboardDesc').textContent = group.description;
       document.getElementById('logNotes').value = '';
 
-      // If online and authenticated, fetch latest rows to display previous values
       if (isTokenValid() && spreadsheetId) {
         await fetchDashboardRows(group);
       }
 
       const lastRow = group.rows && group.rows.length > 0 ? group.rows[group.rows.length - 1] : null;
-      // lastRow format: [Timestamp, metric1, metric2, ..., notes]
 
       const container = document.getElementById('metricsInputsContainer');
       container.innerHTML = group.metrics.map((m, i) => {
@@ -216,7 +214,6 @@
           ? `${m.unit} (${m.min}-${m.max})` 
           : m.unit;
 
-        // Previous value for this metric (columns start at index 1)
         let prevInfo = '<span class="text-xs text-slate-400">Previous: None</span>';
         if (lastRow && lastRow[i + 1] !== undefined && lastRow[i + 1] !== '') {
           const prevVal = lastRow[i + 1];
@@ -289,7 +286,7 @@
       const group = appData.dashboards[idx];
       if (!group) return alert('Please select a dashboard first.');
 
-      document.getElementById('chartDashboardTitle.textContent = group.title;
+      document.getElementById('chartDashboardTitle').textContent = group.title;
       
       if (isTokenValid() && spreadsheetId) {
         await fetchDashboardRows(group);
@@ -316,11 +313,9 @@
       const container = document.getElementById('chartsContainer');
       container.innerHTML = '';
 
-      // Destroy previous Chart instances
       activeCharts.forEach(chart => chart.destroy());
       activeCharts = [];
 
-      // Get last 10 rows
       const rows = group.rows || [];
       const last10Rows = rows.slice(-10);
       const labels = last10Rows.map(r => r[0] ? new Date(r[0]).toLocaleDateString() : 'Unknown');
@@ -331,7 +326,7 @@
       }
 
       group.metrics.forEach((m, mIdx) => {
-        const colIndex = mIdx + 1; // Metric column index in row
+        const colIndex = mIdx + 1;
         const dataPoints = last10Rows.map(r => {
           const val = r[colIndex];
           return (val !== undefined && val !== '' && !isNaN(val)) ? parseFloat(val) : null;
@@ -366,7 +361,6 @@
           spanGaps: true
         }];
 
-        // Add ideal range reference boundary lines if min/max are defined
         if (minVal !== null) {
           datasets.push({
             label: 'Min Ideal',
