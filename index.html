@@ -15,37 +15,46 @@
 
   <!-- Tailwind CSS for mobile-first UI -->
   <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js for Dashboard Charts -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <!-- Google Identity Services & API -->
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
 <body class="bg-slate-50 text-slate-900 min-h-screen font-sans">
 
   <div class="max-w-md mx-auto p-4 space-y-6">
-    <!-- Top Bar / Auth Status -->
+    <!-- Top Bar / Auth & Gear Status -->
     <header class="flex items-center justify-between border-b pb-3">
-      <h1 class="text-xl font-bold text-blue-600">Stats Logger</h1>
-      <button id="authBtn" onclick="handleAuthClick()" class="text-sm bg-blue-600 text-white px-3 py-1.5 rounded-lg font-medium shadow-sm">
-        Sign in with Google
-      </button>
+      <div class="flex items-center space-x-3">
+        <h1 class="text-xl font-bold text-blue-600">Stats Logger</h1>
+      </div>
+      <div class="flex items-center space-x-2">
+        <button id="authBtn" onclick="handleAuthClick()" class="text-xs bg-blue-600 text-white px-2.5 py-1.5 rounded-lg font-medium shadow-sm">
+          Sign in
+        </button>
+        <button onclick="openConfigScreen()" class="p-2 text-slate-600 hover:text-slate-900 bg-white border border-slate-200 rounded-lg shadow-sm" title="Configuration">
+          ⚙️
+        </button>
+      </div>
     </header>
 
     <!-- SCREEN 1: MAIN / HOME -->
     <section id="homeScreen" class="space-y-4">
       <div>
-        <label for="groupingSelect" class="block text-sm font-medium text-slate-700 mb-1">
-          Select Statistics Grouping
+        <label for="dashboardSelect" class="block text-sm font-medium text-slate-700 mb-1">
+          Select Dashboard
         </label>
-        <select id="groupingSelect" onchange="onGroupingChange()" class="w-full rounded-lg border border-slate-300 bg-white p-3 text-base shadow-sm focus:border-blue-500 focus:outline-none">
+        <select id="dashboardSelect" onchange="onDashboardChange()" class="w-full rounded-lg border border-slate-300 bg-white p-3 text-base shadow-sm focus:border-blue-500 focus:outline-none">
         </select>
-        <p id="groupingDescPreview" class="text-xs text-slate-500 mt-1"></p>
+        <p id="dashboardDescPreview" class="text-xs text-slate-500 mt-1"></p>
       </div>
 
       <div class="grid grid-cols-1 gap-3 pt-2">
         <button onclick="openLogScreen()" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3.5 px-4 rounded-xl shadow">
           Log Entry
         </button>
-        <button onclick="openConfigScreen()" class="w-full bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-semibold py-3 px-4 rounded-xl shadow-sm">
-          Configuration
+        <button onclick="openDashboardView()" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-3 px-4 rounded-xl shadow">
+          Open Dashboard (Charts)
         </button>
       </div>
     </section>
@@ -54,10 +63,13 @@
     <section id="logScreen" class="hidden space-y-4">
       <div class="flex items-center justify-between">
         <div>
-          <h2 id="logGroupingTitle" class="text-lg font-bold"></h2>
-          <p id="logGroupingDesc" class="text-xs text-slate-500"></p>
+          <h2 id="logDashboardTitle" class="text-lg font-bold"></h2>
+          <p id="logDashboardDesc" class="text-xs text-slate-500"></p>
         </div>
-        <button onclick="showScreen('homeScreen')" class="text-sm text-slate-500 hover:text-slate-800">Cancel</button>
+        <div class="space-x-2">
+          <button onclick="openDashboardView()" class="text-xs bg-indigo-50 text-indigo-700 border border-indigo-200 px-2.5 py-1.5 rounded font-medium">Dashboard</button>
+          <button onclick="showScreen('homeScreen')" class="text-xs text-slate-500 hover:text-slate-800">Cancel</button>
+        </div>
       </div>
 
       <form id="logForm" onsubmit="submitLog(event)" class="space-y-4">
@@ -74,32 +86,44 @@
       </form>
     </section>
 
-    <!-- SCREEN 3: CONFIGURATION SCREEN -->
+    <!-- SCREEN 3: DASHBOARD CHARTS VIEW -->
+    <section id="dashboardViewScreen" class="hidden space-y-4">
+      <div class="flex items-center justify-between border-b pb-2">
+        <div>
+          <h2 id="chartDashboardTitle" class="text-lg font-bold text-indigo-700"></h2>
+          <p class="text-xs text-slate-500">Last 10 entries with ideal ranges</p>
+        </div>
+        <button onclick="showScreen('homeScreen')" class="text-sm bg-slate-200 hover:bg-slate-300 px-3 py-1 rounded-lg font-medium">Back</button>
+      </div>
+      <div id="chartsContainer" class="space-y-4 pb-4"></div>
+    </section>
+
+    <!-- SCREEN 4: CONFIGURATION SCREEN -->
     <section id="configScreen" class="hidden space-y-6">
       <div class="flex items-center justify-between border-b pb-2">
         <h2 class="text-lg font-bold">Configuration</h2>
         <button onclick="showScreen('homeScreen')" class="text-sm text-blue-600 font-medium">Done</button>
       </div>
 
-      <!-- Manage Groupings -->
+      <!-- Manage Dashboards -->
       <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3 shadow-sm">
-        <h3 class="font-semibold text-sm uppercase tracking-wider text-slate-500">1. Manage Groupings</h3>
-        <div id="configGroupingsList" class="space-y-2"></div>
+        <h3 class="font-semibold text-sm uppercase tracking-wider text-slate-500">1. Manage Dashboards</h3>
+        <div id="configDashboardsList" class="space-y-2"></div>
 
         <div class="border-t pt-3 space-y-2">
-          <input id="newGroupingTitle" type="text" placeholder="Grouping Title (e.g., Aquarium)" class="w-full border rounded-lg p-2 text-sm" />
-          <input id="newGroupingDesc" type="text" placeholder="Description" class="w-full border rounded-lg p-2 text-sm" />
-          <button onclick="saveGrouping()" id="saveGroupingBtn" class="w-full bg-slate-800 text-white py-2 rounded-lg text-sm font-medium">
-            Add Grouping
+          <input id="newDashboardTitle" type="text" placeholder="Dashboard Title (e.g., Aquarium)" class="w-full border rounded-lg p-2 text-sm" />
+          <input id="newDashboardDesc" type="text" placeholder="Description" class="w-full border rounded-lg p-2 text-sm" />
+          <button onclick="saveDashboard()" id="saveDashboardBtn" class="w-full bg-slate-800 text-white py-2 rounded-lg text-sm font-medium">
+            Add Dashboard
           </button>
         </div>
       </div>
 
-      <!-- Manage Metrics for Selected Grouping -->
+      <!-- Manage Metrics for Selected Dashboard -->
       <div class="bg-white p-4 rounded-xl border border-slate-200 space-y-3 shadow-sm">
         <div class="flex items-center justify-between">
           <h3 class="font-semibold text-sm uppercase tracking-wider text-slate-500">2. Manage Metrics</h3>
-          <span id="configActiveGroupingBadge" class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium"></span>
+          <span id="configActiveDashboardBadge" class="text-xs bg-blue-100 text-blue-700 px-2 py-0.5 rounded font-medium"></span>
         </div>
 
         <div id="configMetricsList" class="space-y-2"></div>
@@ -127,11 +151,12 @@
     let accessToken = localStorage.getItem('stats_access_token') || null;
     let tokenExpiry = Number(localStorage.getItem('stats_token_expiry')) || 0;
     let spreadsheetId = localStorage.getItem('stats_spreadsheet_id') || null;
-    let editingGroupingIndex = null;
+    let editingDashboardIndex = null;
     let editingMetricIndex = null;
+    let activeCharts = [];
 
     let appData = {
-      groupings: [
+      dashboards: [
         {
           sheetId: 0,
           title: 'Daily Vitals',
@@ -139,13 +164,14 @@
           metrics: [
             { title: 'Weight', description: 'Post-wake weigh in', unit: 'kg', min: 50, max: 100 },
             { title: 'Resting HR', description: 'Seated pulse', unit: 'bpm', min: 60, max: 100 }
-          ]
+          ],
+          rows: []
         }
       ]
     };
 
     function showScreen(screenId) {
-      ['homeScreen', 'logScreen', 'configScreen'].forEach(id => {
+      ['homeScreen', 'logScreen', 'dashboardViewScreen', 'configScreen'].forEach(id => {
         document.getElementById(id).classList.toggle('hidden', id !== screenId);
       });
       window.location.hash = screenId.replace('Screen', '');
@@ -153,28 +179,36 @@
     }
 
     function renderUI() {
-      const select = document.getElementById('groupingSelect');
+      const select = document.getElementById('dashboardSelect');
       const currentIdx = select.selectedIndex >= 0 ? select.selectedIndex : 0;
-      select.innerHTML = appData.groupings.map((g, idx) =>
+      select.innerHTML = appData.dashboards.map((g, idx) =>
         `<option value="${idx}" ${idx === currentIdx ? 'selected' : ''}>${g.title}</option>`
       ).join('');
 
-      const activeGroup = appData.groupings[select.value] || appData.groupings[0];
-      document.getElementById('groupingDescPreview').textContent = activeGroup ? activeGroup.description : '';
+      const activeGroup = appData.dashboards[select.value] || appData.dashboards[0];
+      document.getElementById('dashboardDescPreview').textContent = activeGroup ? activeGroup.description : '';
     }
 
-    function onGroupingChange() {
+    function onDashboardChange() {
       renderUI();
     }
 
-    function openLogScreen() {
-      const idx = document.getElementById('groupingSelect').value;
-      const group = appData.groupings[idx];
-      if (!group) return alert('Please create a grouping first.');
+    async function openLogScreen() {
+      const idx = document.getElementById('dashboardSelect').value;
+      const group = appData.dashboards[idx];
+      if (!group) return alert('Please create a dashboard first.');
 
-      document.getElementById('logGroupingTitle').textContent = group.title;
-      document.getElementById('logGroupingDesc').textContent = group.description;
+      document.getElementById('logDashboardTitle').textContent = group.title;
+      document.getElementById('logDashboardDesc').textContent = group.description;
       document.getElementById('logNotes').value = '';
+
+      // If online and authenticated, fetch latest rows to display previous values
+      if (isTokenValid() && spreadsheetId) {
+        await fetchDashboardRows(group);
+      }
+
+      const lastRow = group.rows && group.rows.length > 0 ? group.rows[group.rows.length - 1] : null;
+      // lastRow format: [Timestamp, metric1, metric2, ..., notes]
 
       const container = document.getElementById('metricsInputsContainer');
       container.innerHTML = group.metrics.map((m, i) => {
@@ -182,16 +216,25 @@
           ? `${m.unit} (${m.min}-${m.max})` 
           : m.unit;
 
+        // Previous value for this metric (columns start at index 1)
+        let prevInfo = '<span class="text-xs text-slate-400">Previous: None</span>';
+        if (lastRow && lastRow[i + 1] !== undefined && lastRow[i + 1] !== '') {
+          const prevVal = lastRow[i + 1];
+          const prevDate = lastRow[0] ? new Date(lastRow[0]).toLocaleDateString() : '';
+          prevInfo = `<span class="text-xs text-slate-600 font-medium">Previous: ${prevVal} ${m.unit} <span class="text-slate-400 font-normal">(${prevDate})</span></span>`;
+        }
+
         return `
-          <div class="bg-white p-3 rounded-lg border border-slate-200">
-            <div class="flex justify-between items-baseline mb-1">
+          <div class="bg-white p-3 rounded-lg border border-slate-200 space-y-1.5">
+            <div class="flex justify-between items-baseline">
               <label class="text-sm font-semibold text-slate-800">${m.title}</label>
               <span class="text-xs font-medium text-blue-600">${rangeText}</span>
             </div>
-            <p class="text-xs text-slate-500 mb-2">${m.description}</p>
+            <p class="text-xs text-slate-500">${m.description}</p>
+            <div class="pt-1">${prevInfo}</div>
             <input type="number" step="any" data-metric-idx="${i}" data-min="${m.min !== undefined ? m.min : ''}" data-max="${m.max !== undefined ? m.max : ''}" 
               placeholder="Enter ${m.title.toLowerCase()}..." oninput="checkMetricRange(this)"
-              class="metric-input w-full rounded border border-slate-300 p-2 text-sm focus:border-blue-500 focus:outline-none transition-colors" />
+              class="metric-input w-full rounded border border-slate-300 p-2 text-sm focus:border-blue-500 focus:outline-none transition-colors mt-1" />
           </div>
         `;
       }).join('');
@@ -222,8 +265,8 @@
 
     async function submitLog(e) {
       e.preventDefault();
-      const idx = document.getElementById('groupingSelect').value;
-      const group = appData.groupings[idx];
+      const idx = document.getElementById('dashboardSelect').value;
+      const group = appData.dashboards[idx];
       const timestamp = new Date().toISOString();
       const metricValues = Array.from(document.querySelectorAll('.metric-input')).map(input => input.value);
       const notes = document.getElementById('logNotes').value;
@@ -240,30 +283,161 @@
       showScreen('homeScreen');
     }
 
+    // --- DASHBOARD CHARTS VIEW ---
+    async function openDashboardView() {
+      const idx = document.getElementById('dashboardSelect').value;
+      const group = appData.dashboards[idx];
+      if (!group) return alert('Please select a dashboard first.');
+
+      document.getElementById('chartDashboardTitle.textContent = group.title;
+      
+      if (isTokenValid() && spreadsheetId) {
+        await fetchDashboardRows(group);
+      }
+
+      showScreen('dashboardViewScreen');
+      renderDashboardCharts(group);
+    }
+
+    async function fetchDashboardRows(group) {
+      try {
+        const res = await fetch(`https://sheets.googleapis.com/v4/spreadsheets/${spreadsheetId}/values/${encodeURIComponent(group.title)}!A6:Z1000`, {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const data = await res.json();
+        group.rows = data.values || [];
+      } catch (err) {
+        console.error('Error fetching rows:', err);
+        group.rows = [];
+      }
+    }
+
+    function renderDashboardCharts(group) {
+      const container = document.getElementById('chartsContainer');
+      container.innerHTML = '';
+
+      // Destroy previous Chart instances
+      activeCharts.forEach(chart => chart.destroy());
+      activeCharts = [];
+
+      // Get last 10 rows
+      const rows = group.rows || [];
+      const last10Rows = rows.slice(-10);
+      const labels = last10Rows.map(r => r[0] ? new Date(r[0]).toLocaleDateString() : 'Unknown');
+
+      if (group.metrics.length === 0) {
+        container.innerHTML = '<p class="text-sm text-slate-500 text-center py-8">No metrics configured for this dashboard.</p>';
+        return;
+      }
+
+      group.metrics.forEach((m, mIdx) => {
+        const colIndex = mIdx + 1; // Metric column index in row
+        const dataPoints = last10Rows.map(r => {
+          const val = r[colIndex];
+          return (val !== undefined && val !== '' && !isNaN(val)) ? parseFloat(val) : null;
+        });
+
+        const card = document.createElement('div');
+        card.className = 'bg-white p-4 rounded-xl border border-slate-200 shadow-sm space-y-2';
+        card.innerHTML = `
+          <div class="flex justify-between items-baseline">
+            <h3 class="font-bold text-sm text-slate-800">${m.title} <span class="text-xs font-normal text-slate-500">(${m.unit})</span></h3>
+            <span class="text-xs text-indigo-600 font-medium">Range: ${m.min !== '' && m.min != null ? m.min : 'Any'} - ${m.max !== '' && m.max != null ? m.max : 'Any'}</span>
+          </div>
+          <div class="relative h-48 w-full">
+            <canvas id="chart_${mIdx}"></canvas>
+          </div>
+        `;
+        container.appendChild(card);
+
+        const ctx = document.getElementById(`chart_${mIdx}`).getContext('2d');
+
+        const minVal = (m.min !== '' && m.min != null) ? parseFloat(m.min) : null;
+        const maxVal = (m.max !== '' && m.max != null) ? parseFloat(m.max) : null;
+
+        const datasets = [{
+          label: m.title,
+          data: dataPoints,
+          borderColor: '#2563eb',
+          backgroundColor: 'rgba(37, 99, 235, 0.1)',
+          borderWidth: 2,
+          tension: 0.1,
+          fill: false,
+          spanGaps: true
+        }];
+
+        // Add ideal range reference boundary lines if min/max are defined
+        if (minVal !== null) {
+          datasets.push({
+            label: 'Min Ideal',
+            data: new Array(labels.length).fill(minVal),
+            borderColor: 'rgba(239, 68, 68, 0.7)',
+            borderDash: [4, 4],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false
+          });
+        }
+        if (maxVal !== null) {
+          datasets.push({
+            label: 'Max Ideal',
+            data: new Array(labels.length).fill(maxVal),
+            borderColor: 'rgba(239, 68, 68, 0.7)',
+            borderDash: [4, 4],
+            borderWidth: 1.5,
+            pointRadius: 0,
+            fill: false
+          });
+        }
+
+        const chart = new Chart(ctx, {
+          type: 'line',
+          data: {
+            labels: labels.length > 0 ? labels : ['No Data'],
+            datasets: datasets
+          },
+          options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+              legend: { display: datasets.length > 1 }
+            },
+            scales: {
+              y: { beginAtZero: false },
+              x: { grid: { display: false } }
+            }
+          }
+        });
+
+        activeCharts.push(chart);
+      });
+    }
+
+    // --- CONFIGURATION SCREEN ---
     function openConfigScreen() {
       showScreen('configScreen');
       renderConfigLists();
     }
 
     function renderConfigLists() {
-      const select = document.getElementById('groupingSelect');
+      const select = document.getElementById('dashboardSelect');
       const activeIdx = Number(select.value || 0);
-      const activeGroup = appData.groupings[activeIdx];
+      const activeGroup = appData.dashboards[activeIdx];
 
-      document.getElementById('configGroupingsList').innerHTML = appData.groupings.map((g, i) => `
+      document.getElementById('configDashboardsList').innerHTML = appData.dashboards.map((g, i) => `
         <div class="flex items-center justify-between bg-slate-50 p-2 rounded border text-sm">
           <div>
             <p class="font-medium">${g.title}</p>
             <p class="text-xs text-slate-500">${g.description}</p>
           </div>
           <div class="space-x-2">
-            <button onclick="editGrouping(${i})" class="text-xs text-blue-600 font-medium">Edit</button>
-            <button onclick="deleteGrouping(${i})" class="text-xs text-red-600 font-medium">Delete</button>
+            <button onclick="editDashboard(${i})" class="text-xs text-blue-600 font-medium">Edit</button>
+            <button onclick="deleteDashboard(${i})" class="text-xs text-red-600 font-medium">Delete</button>
           </div>
         </div>
       `).join('');
 
-      document.getElementById('configActiveGroupingBadge').textContent = activeGroup ? activeGroup.title : 'None';
+      document.getElementById('configActiveDashboardBadge').textContent = activeGroup ? activeGroup.title : 'None';
       document.getElementById('configMetricsList').innerHTML = activeGroup ? activeGroup.metrics.map((m, i) => {
         const rText = (m.min !== '' && m.min != null && m.max !== '' && m.max != null) ? ` | Range: ${m.min}-${m.max}` : '';
         return `
@@ -278,47 +452,47 @@
             </div>
           </div>
         `;
-      }).join('') : '<p class="text-xs text-slate-400">Select or create a grouping first.</p>';
+      }).join('') : '<p class="text-xs text-slate-400">Select or create a dashboard first.</p>';
     }
 
-    async function saveGrouping() {
-      const title = document.getElementById('newGroupingTitle').value.trim();
-      const description = document.getElementById('newGroupingDesc').value.trim();
+    async function saveDashboard() {
+      const title = document.getElementById('newDashboardTitle').value.trim();
+      const description = document.getElementById('newDashboardDesc').value.trim();
       if (!title) return;
 
-      if (editingGroupingIndex !== null) {
-        appData.groupings[editingGroupingIndex].title = title;
-        appData.groupings[editingGroupingIndex].description = description;
-        editingGroupingIndex = null;
-        document.getElementById('saveGroupingBtn').textContent = 'Add Grouping';
+      if (editingDashboardIndex !== null) {
+        appData.dashboards[editingDashboardIndex].title = title;
+        appData.dashboards[editingDashboardIndex].description = description;
+        editingDashboardIndex = null;
+        document.getElementById('saveDashboardBtn').textContent = 'Add Dashboard';
       } else {
-        appData.groupings.push({ title, description, metrics: [] });
+        appData.dashboards.push({ title, description, metrics: [], rows: [] });
       }
 
-      document.getElementById('newGroupingTitle').value = '';
-      document.getElementById('newGroupingDesc').value = '';
+      document.getElementById('newDashboardTitle').value = '';
+      document.getElementById('newDashboardDesc').value = '';
       renderUI();
       renderConfigLists();
       if (isTokenValid() && spreadsheetId) await syncStructureToSheets();
     }
 
-    function editGrouping(idx) {
-      const g = appData.groupings[idx];
-      document.getElementById('newGroupingTitle').value = g.title;
-      document.getElementById('newGroupingDesc').value = g.description;
-      editingGroupingIndex = idx;
-      document.getElementById('saveGroupingBtn').textContent = 'Update Grouping';
+    function editDashboard(idx) {
+      const g = appData.dashboards[idx];
+      document.getElementById('newDashboardTitle').value = g.title;
+      document.getElementById('newDashboardDesc').value = g.description;
+      editingDashboardIndex = idx;
+      document.getElementById('saveDashboardBtn').textContent = 'Update Dashboard';
     }
 
-    function deleteGrouping(idx) {
-      appData.groupings.splice(idx, 1);
+    function deleteDashboard(idx) {
+      appData.dashboards.splice(idx, 1);
       renderUI();
       renderConfigLists();
     }
 
     async function saveMetric() {
-      const activeIdx = Number(document.getElementById('groupingSelect').value || 0);
-      const group = appData.groupings[activeIdx];
+      const activeIdx = Number(document.getElementById('dashboardSelect').value || 0);
+      const group = appData.dashboards[activeIdx];
       if (!group) return;
 
       const title = document.getElementById('newMetricTitle').value.trim();
@@ -346,8 +520,8 @@
     }
 
     function editMetric(idx) {
-      const activeIdx = Number(document.getElementById('groupingSelect').value || 0);
-      const m = appData.groupings[activeIdx].metrics[idx];
+      const activeIdx = Number(document.getElementById('dashboardSelect').value || 0);
+      const m = appData.dashboards[activeIdx].metrics[idx];
       document.getElementById('newMetricTitle').value = m.title;
       document.getElementById('newMetricDesc').value = m.description;
       document.getElementById('newMetricUnit').value = m.unit;
@@ -358,8 +532,8 @@
     }
 
     function deleteMetric(idx) {
-      const activeIdx = Number(document.getElementById('groupingSelect').value || 0);
-      appData.groupings[activeIdx].metrics.splice(idx, 1);
+      const activeIdx = Number(document.getElementById('dashboardSelect').value || 0);
+      appData.dashboards[activeIdx].metrics.splice(idx, 1);
       renderConfigLists();
     }
 
@@ -374,7 +548,7 @@
         btn.textContent = 'Connected';
         btn.classList.replace('bg-blue-600', 'bg-green-600');
       } else {
-        btn.textContent = 'Sign in with Google';
+        btn.textContent = 'Sign in';
         btn.classList.replace('bg-green-600', 'bg-blue-600');
       }
     }
@@ -424,7 +598,7 @@
           },
           body: JSON.stringify({
             properties: { title: 'Statistics_Tracker_Data' },
-            sheets: appData.groupings.map(g => ({ properties: { title: g.title } }))
+            sheets: appData.dashboards.map(g => ({ properties: { title: g.title } }))
           })
         });
         const created = await createRes.json();
@@ -441,7 +615,7 @@
       const sheetDoc = await res.json();
       if (!sheetDoc.sheets) return;
 
-      appData.groupings = sheetDoc.sheets.map(s => {
+      appData.dashboards = sheetDoc.sheets.map(s => {
         const rows = (s.data && s.data[0] && s.data[0].rowData) ? s.data[0].rowData : [];
         const getVal = (r, c) => rows[r]?.values?.[c]?.formattedValue || '';
 
@@ -461,7 +635,7 @@
             });
           }
         }
-        return { sheetId: s.properties.sheetId, title, description, metrics };
+        return { sheetId: s.properties.sheetId, title, description, metrics, rows: [] };
       });
       renderUI();
     }
@@ -474,7 +648,7 @@
       const existingTitles = meta.sheets.map(s => s.properties.title);
 
       const requests = [];
-      for (const group of appData.groupings) {
+      for (const group of appData.dashboards) {
         if (!existingTitles.includes(group.title)) {
           requests.push({ addSheet: { properties: { title: group.title } } });
         }
@@ -490,7 +664,7 @@
         });
       }
 
-      for (const group of appData.groupings) {
+      for (const group of appData.dashboards) {
         const row1 = [group.title];
         const row2 = [group.description];
         const row3 = ['Timestamp', ...group.metrics.map(m => m.title), 'Notes'];
@@ -523,11 +697,13 @@
       });
     }
 
-    // Initialize UI and load sheet structure if previously logged in
+    // Initialize UI and hash router on load
     window.addEventListener('load', () => {
       const hash = window.location.hash.replace('#', '');
       if (hash === 'log') {
         openLogScreen();
+      } else if (hash === 'dashboardView') {
+        openDashboardView();
       } else if (hash === 'config') {
         openConfigScreen();
       } else {
